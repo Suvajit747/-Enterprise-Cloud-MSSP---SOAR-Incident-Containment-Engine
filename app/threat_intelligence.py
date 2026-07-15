@@ -3,10 +3,10 @@ import ipaddress
 import json
 import re
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
-from .config import VIRUSTOTAL_API_KEY
+from .config import ABUSEIPDB_API_KEY, VIRUSTOTAL_API_KEY
 
 
 class ThreatIntelligenceService:
@@ -15,6 +15,13 @@ class ThreatIntelligenceService:
     VIRUSTOTAL_MOCK_RESPONSE = {
         "malicious": True,
         "score": 92,
+    }
+    ABUSEIPDB_BASE_URL = "https://api.abuseipdb.com/api/v2/check"
+    ABUSEIPDB_TIMEOUT_SECONDS = 5
+    ABUSEIPDB_MAX_AGE_DAYS = 90
+    ABUSEIPDB_MOCK_RESPONSE = {
+        "score": 84,
+        "country": "US",
     }
 
     def enrich_with_virustotal(self, alert):
@@ -32,10 +39,18 @@ class ThreatIntelligenceService:
         return self._build_virustotal_response(report)
 
     def enrich_with_abuseipdb(self, alert):
-        return {
-            "score": 84,
-            "country": "US",
-        }
+        if not ABUSEIPDB_API_KEY:
+            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
+
+        ip_address = self._extract_ip_address(alert)
+        if ip_address is None:
+            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
+
+        report = self._fetch_abuseipdb_report(ip_address)
+        if report is None:
+            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
+
+        return self._build_abuseipdb_response(report)
 
     def calculate_risk_score(self, alert, virus_total, abuse_ipdb):
         severity_scores = {
@@ -64,12 +79,9 @@ class ThreatIntelligenceService:
         if hash_match:
             return "files", hash_match.group(0)
 
-        for candidate in re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text):
-            try:
-                ipaddress.ip_address(candidate)
-            except ValueError:
-                continue
-            return "ip_addresses", candidate
+        ip_address = self._extract_ip_address(alert)
+        if ip_address:
+            return "ip_addresses", ip_address
 
         domain_match = re.search(r"\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b", text)
         if domain_match:
@@ -112,4 +124,46 @@ class ThreatIntelligenceService:
         return {
             "malicious": detection_count > 0,
             "score": score,
+        }
+
+    def _extract_ip_address(self, alert):
+        text = f"{alert.title or ''} {alert.description or ''} {alert.source or ''}"
+        for candidate in re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", text):
+            try:
+                ipaddress.ip_address(candidate)
+            except ValueError:
+                continue
+            return candidate
+        return None
+
+    def _fetch_abuseipdb_report(self, ip_address):
+        query_string = urlencode(
+            {
+                "ipAddress": ip_address,
+                "maxAgeInDays": self.ABUSEIPDB_MAX_AGE_DAYS,
+            }
+        )
+        request = Request(
+            f"{self.ABUSEIPDB_BASE_URL}?{query_string}",
+            headers={
+                "Accept": "application/json",
+                "Key": ABUSEIPDB_API_KEY,
+            },
+        )
+
+        try:
+            with urlopen(request, timeout=self.ABUSEIPDB_TIMEOUT_SECONDS) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            if error.code in {401, 403, 429}:
+                return None
+            return None
+        except (URLError, TimeoutError, json.JSONDecodeError):
+            return None
+
+    def _build_abuseipdb_response(self, report):
+        data = report.get("data", {})
+        return {
+            "score": int(data.get("abuseConfidenceScore", 0) or 0),
+            "country": data.get("countryCode") or "Unknown",
         }
