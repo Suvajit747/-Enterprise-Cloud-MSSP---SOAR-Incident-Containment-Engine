@@ -6,13 +6,14 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from . import models, schemas
+from .config import API_TITLE, API_VERSION
 from .database import Base, SessionLocal, engine
 from .playbook import PlaybookEngine
 from .threat_intelligence import ThreatIntelligenceService
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="SOAR Incident Containment Engine")
+app = FastAPI(title=API_TITLE, version=API_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
