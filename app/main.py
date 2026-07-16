@@ -50,6 +50,19 @@ def health_check(db: Session = Depends(get_db)):
     }
 
 
+@app.get(
+    "/version",
+    tags=["System"],
+    summary="Get API version information",
+)
+def get_version():
+    return {
+        "application": API_TITLE,
+        "version": API_VERSION,
+        "api": "v1",
+    }
+
+
 @app.post("/alerts", response_model=schemas.AlertResponse, status_code=201)
 def create_alert(alert: schemas.AlertCreate, db: Session = Depends(get_db)):
     db_alert = models.Alert(**alert.model_dump())
