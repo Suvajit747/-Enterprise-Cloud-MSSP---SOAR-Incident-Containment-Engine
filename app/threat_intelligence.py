@@ -16,6 +16,7 @@ class ThreatIntelligenceService:
         "malicious": True,
         "score": 92,
     }
+    VIRUSTOTAL_CACHE = {}
     ABUSEIPDB_BASE_URL = "https://api.abuseipdb.com/api/v2/check"
     ABUSEIPDB_TIMEOUT_SECONDS = 5
     ABUSEIPDB_MAX_AGE_DAYS = 90
@@ -23,34 +24,51 @@ class ThreatIntelligenceService:
         "score": 84,
         "country": "US",
     }
+    ABUSEIPDB_CACHE = {}
 
     def enrich_with_virustotal(self, alert):
+        cache_key = self._get_alert_cache_key(alert)
+        cached_response = self.VIRUSTOTAL_CACHE.get(cache_key)
+        if cached_response is not None:
+            return cached_response.copy()
+
         if not VIRUSTOTAL_API_KEY:
-            return self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+            response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+        else:
+            indicator = self._extract_virustotal_indicator(alert)
+            if indicator is None:
+                response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+            else:
+                report = self._fetch_virustotal_report(indicator)
+                if report is None:
+                    response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+                else:
+                    response = self._build_virustotal_response(report)
 
-        indicator = self._extract_virustotal_indicator(alert)
-        if indicator is None:
-            return self.VIRUSTOTAL_MOCK_RESPONSE.copy()
-
-        report = self._fetch_virustotal_report(indicator)
-        if report is None:
-            return self.VIRUSTOTAL_MOCK_RESPONSE.copy()
-
-        return self._build_virustotal_response(report)
+        self.VIRUSTOTAL_CACHE[cache_key] = response.copy()
+        return response.copy()
 
     def enrich_with_abuseipdb(self, alert):
+        cache_key = self._get_alert_cache_key(alert)
+        cached_response = self.ABUSEIPDB_CACHE.get(cache_key)
+        if cached_response is not None:
+            return cached_response.copy()
+
         if not ABUSEIPDB_API_KEY:
-            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
+            response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+        else:
+            ip_address = self._extract_ip_address(alert)
+            if ip_address is None:
+                response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+            else:
+                report = self._fetch_abuseipdb_report(ip_address)
+                if report is None:
+                    response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+                else:
+                    response = self._build_abuseipdb_response(report)
 
-        ip_address = self._extract_ip_address(alert)
-        if ip_address is None:
-            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
-
-        report = self._fetch_abuseipdb_report(ip_address)
-        if report is None:
-            return self.ABUSEIPDB_MOCK_RESPONSE.copy()
-
-        return self._build_abuseipdb_response(report)
+        self.ABUSEIPDB_CACHE[cache_key] = response.copy()
+        return response.copy()
 
     def calculate_risk_score(self, alert, virus_total, abuse_ipdb):
         severity_scores = {
@@ -65,6 +83,16 @@ class ThreatIntelligenceService:
         if abuse_ipdb.get("score", 0) > 80:
             risk_score += 10
         return risk_score
+
+    def _get_alert_cache_key(self, alert):
+        alert_id = getattr(alert, "id", None)
+        if alert_id is not None:
+            return alert_id
+        return (
+            getattr(alert, "source", ""),
+            getattr(alert, "title", ""),
+            getattr(alert, "description", ""),
+        )
 
     def _extract_virustotal_indicator(self, alert):
         text = f"{alert.title or ''} {alert.description or ''} {alert.source or ''}"
