@@ -114,7 +114,7 @@ def execute_alert_playbook(id: int, db: Session = Depends(get_db)):
     abuse_ipdb = threat_service.enrich_with_abuseipdb(alert)
     risk_score = threat_service.calculate_risk_score(alert, virus_total, abuse_ipdb)
     playbook_engine = PlaybookEngine()
-    playbook_result = playbook_engine.execute_playbook(alert)
+    playbook_result = playbook_engine.execute_playbook(alert, risk_score)
     return {
         "alert_id": id,
         "risk_score": risk_score,

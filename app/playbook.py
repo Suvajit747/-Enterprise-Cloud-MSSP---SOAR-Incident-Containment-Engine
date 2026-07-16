@@ -6,6 +6,28 @@ class PlaybookEngine:
         "create_incident",
         "no_action",
     ]
+    risk_rules = [
+        {
+            "minimum_score": 90,
+            "action": "block_ip",
+            "description": "Risk >= 90: block the suspected IP because the alert is high confidence and high impact.",
+        },
+        {
+            "minimum_score": 75,
+            "action": "isolate_endpoint",
+            "description": "Risk >= 75: isolate the endpoint to contain likely compromise.",
+        },
+        {
+            "minimum_score": 50,
+            "action": "notify_admin",
+            "description": "Risk >= 50: notify an administrator for manual review.",
+        },
+        {
+            "minimum_score": 0,
+            "action": "create_incident",
+            "description": "Risk < 50: create an incident for tracking without active containment.",
+        },
+    ]
 
     def analyze_alert(self, alert):
         title = (alert.title or "").lower()
@@ -19,23 +41,18 @@ class PlaybookEngine:
             "contains_powershell": "powershell" in title or "powershell" in description,
         }
 
-    def determine_action(self, alert):
-        analysis = self.analyze_alert(alert)
-        if analysis["severity"] == "critical" or analysis["contains_malware"]:
-            return "isolate_endpoint"
-        if analysis["contains_brute_force"] or analysis["severity"] == "high":
-            return "block_ip"
-        if analysis["severity"] == "medium":
-            return "create_incident"
-        if analysis["severity"] == "low":
-            return "notify_admin"
-        return "no_action"
+    def determine_action(self, alert, risk_score):
+        for rule in self.risk_rules:
+            if risk_score >= rule["minimum_score"]:
+                return rule["action"]
+        return "create_incident"
 
-    def execute_playbook(self, alert):
-        action = self.determine_action(alert)
+    def execute_playbook(self, alert, risk_score):
+        action = self.determine_action(alert, risk_score)
         status = "skipped" if action == "no_action" else "completed"
         return {
             "alert_id": alert.id,
+            "risk_score": risk_score,
             "action": action,
             "status": status,
             "message": f"Mock playbook action '{action}' executed",
