@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -30,6 +30,24 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.get(
+    "/health",
+    tags=["System"],
+    summary="Check API and database health",
+)
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Database connection failed") from error
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "service": API_TITLE,
+        "version": API_VERSION,
+    }
 
 
 @app.post("/alerts", response_model=schemas.AlertResponse, status_code=201)
