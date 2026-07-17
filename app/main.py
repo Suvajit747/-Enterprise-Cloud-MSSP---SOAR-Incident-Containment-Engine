@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .config import API_TITLE, API_VERSION
-from .database import Base, SessionLocal, engine
+from .database import Base, SessionLocal, create_missing_indexes, engine
 from .playbook import PlaybookEngine
 from .threat_intelligence import ThreatIntelligenceService
 
 Base.metadata.create_all(bind=engine)
+create_missing_indexes()
 
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
