@@ -84,6 +84,13 @@ class ThreatIntelligenceService:
             risk_score += 10
         return risk_score
 
+    def calculate_risk_level(self, risk_score):
+        if risk_score >= 75:
+            return "High"
+        if risk_score >= 50:
+            return "Medium"
+        return "Low"
+
     def _get_alert_cache_key(self, alert):
         alert_id = getattr(alert, "id", None)
         if alert_id is not None:

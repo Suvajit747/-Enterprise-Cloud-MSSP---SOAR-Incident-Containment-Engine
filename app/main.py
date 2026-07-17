@@ -122,11 +122,12 @@ def get_alert_enrichment(id: int, db: Session = Depends(get_db)):
     virus_total = threat_service.enrich_with_virustotal(alert)
     abuse_ipdb = threat_service.enrich_with_abuseipdb(alert)
     risk_score = threat_service.calculate_risk_score(alert, virus_total, abuse_ipdb)
+    risk_level = threat_service.calculate_risk_level(risk_score)
     return {
         "alert_id": id,
         "virus_total": virus_total,
         "abuse_ipdb": abuse_ipdb,
-        "risk_level": "High",
+        "risk_level": risk_level,
         "risk_score": risk_score,
     }
 
