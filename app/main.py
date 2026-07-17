@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, or_, text
+from sqlalchemy import case, func, or_, text
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -31,6 +31,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _count_when(condition):
+    return func.coalesce(func.sum(case((condition, 1), else_=0)), 0)
 
 
 @app.get(
@@ -219,21 +223,38 @@ def update_alert_status(
     summary="Get dashboard metrics",
 )
 def get_dashboard(db: Session = Depends(get_db)):
-    high_risk_alerts = db.query(models.Alert).filter(models.Alert.severity.in_(["critical", "high"])).count()
-    automation_completed = db.query(models.Alert).filter(models.Alert.status.in_(["contained", "resolved", "closed"])).count()
+    metrics = db.query(
+        func.count(models.Alert.id).label("total_alerts"),
+        _count_when(models.Alert.status == "new").label("new_alerts"),
+        _count_when(models.Alert.status == "investigating").label("investigating"),
+        _count_when(models.Alert.status == "contained").label("contained"),
+        _count_when(models.Alert.status == "resolved").label("resolved"),
+        _count_when(models.Alert.status == "closed").label("closed"),
+        _count_when(models.Alert.severity == "critical").label("critical"),
+        _count_when(models.Alert.severity == "high").label("high"),
+        _count_when(models.Alert.severity == "medium").label("medium"),
+        _count_when(models.Alert.severity == "low").label("low"),
+        _count_when(models.Alert.status.in_(["contained", "resolved", "closed"])).label(
+            "automation_completed"
+        ),
+        _count_when(models.Alert.severity.in_(["critical", "high"])).label(
+            "high_risk_alerts"
+        ),
+    ).one()
+    high_risk_alerts = int(metrics.high_risk_alerts)
     playbooks_executed = high_risk_alerts
     return {
-        "total_alerts": db.query(models.Alert).count(),
-        "new_alerts": db.query(models.Alert).filter(models.Alert.status == "new").count(),
-        "investigating": db.query(models.Alert).filter(models.Alert.status == "investigating").count(),
-        "contained": db.query(models.Alert).filter(models.Alert.status == "contained").count(),
-        "resolved": db.query(models.Alert).filter(models.Alert.status == "resolved").count(),
-        "closed": db.query(models.Alert).filter(models.Alert.status == "closed").count(),
-        "critical": db.query(models.Alert).filter(models.Alert.severity == "critical").count(),
-        "high": db.query(models.Alert).filter(models.Alert.severity == "high").count(),
-        "medium": db.query(models.Alert).filter(models.Alert.severity == "medium").count(),
-        "low": db.query(models.Alert).filter(models.Alert.severity == "low").count(),
-        "automation_completed": automation_completed,
+        "total_alerts": int(metrics.total_alerts),
+        "new_alerts": int(metrics.new_alerts),
+        "investigating": int(metrics.investigating),
+        "contained": int(metrics.contained),
+        "resolved": int(metrics.resolved),
+        "closed": int(metrics.closed),
+        "critical": int(metrics.critical),
+        "high": int(metrics.high),
+        "medium": int(metrics.medium),
+        "low": int(metrics.low),
+        "automation_completed": int(metrics.automation_completed),
         "high_risk_alerts": high_risk_alerts,
         "playbooks_executed": playbooks_executed,
     }
