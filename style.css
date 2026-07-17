@@ -1,0 +1,440 @@
+/*
+=======================================================================
+  SOAR INCIDENT CONTAINMENT ENGINE — STYLES
+  Dark security operations center theme
+  Member 4: Frontend + Documentation
+=======================================================================
+  Day 1-2:  Base dark theme, navbar, body
+  Day 3-4:  Panel cards, stats bar
+  Day 5-6:  Alert form inputs, scenario buttons
+  Day 7:    README + CSS polish
+  Day 8-9:  Enrichment panel, IP reputation badges
+  Day 10:   Timeline component
+  Day 11:   Error toast, loading states
+  Day 12:   Entity/action type badges
+  Day 13:   Architecture diagram styles
+  Day 14:   API docs CSS
+  Day 15:   Case list items
+  Day 16:   Case detail modal
+  Day 17:   Mobile responsive
+  Day 18:   Risk score meter
+  Day 19:   MTTR box, filter buttons
+  Day 20:   Final polish, transitions
+=======================================================================
+*/
+
+/* ── Day 1: Global dark base ─────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* ── Day 2: Navbar ───────────────────────────────────────────── */
+#mainNav {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+
+/* ── Day 3: Stats bar ────────────────────────────────────────── */
+.stats-bar {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #c9d1d9;
+}
+
+.stat-lbl {
+  font-size: 10px;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Day 3: Panel cards ──────────────────────────────────────── */
+.panel {
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s; /* Day 20 */
+}
+
+.panel:hover {
+  border-color: #30363d;
+}
+
+.panel-header {
+  background: #1c2128;
+  border-bottom: 1px solid #21262d;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.panel-body {
+  padding: 14px;
+}
+
+/* ── Day 5: Form inputs dark theme ───────────────────────────── */
+.dark-input {
+  background: #0d1117 !important;
+  border: 1px solid #30363d !important;
+  color: #c9d1d9 !important;
+  font-size: 12px;
+}
+
+.dark-input:focus {
+  background: #0d1117 !important;
+  border-color: #58a6ff !important;
+  color: #e6edf3 !important;
+  box-shadow: 0 0 0 3px rgba(88,166,255,0.15) !important;
+}
+
+.dark-input::placeholder { color: #484f58 !important; }
+
+.dark-input option {
+  background: #161b22;
+  color: #c9d1d9;
+}
+
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8b949e;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.divider-text {
+  text-align: center;
+  color: #484f58;
+  font-size: 11px;
+  margin: 10px 0;
+}
+
+/* ── Day 6: Scenario buttons ──────────────────────────────────── */
+.btn-scenario {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  background: #1c2128;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-scenario:hover {
+  background: #21262d;
+  color: #e6edf3;
+  border-color: #58a6ff;
+  transform: translateY(-1px);
+}
+
+.btn-scenario.active {
+  background: #1f6feb;
+  color: white;
+  border-color: #1f6feb;
+}
+
+/* ── Day 10: Playbook timeline ────────────────────────────────── */
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -12px;
+  width: 2px;
+  background: #21262d;
+}
+
+.timeline-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.dot-info     { background: #1c2128; border: 2px solid #30363d; }
+.dot-low      { background: #1a3a1a; border: 2px solid #3fb950; }
+.dot-medium   { background: #3a2a00; border: 2px solid #d29922; }
+.dot-high     { background: #3a1a00; border: 2px solid #f78166; }
+.dot-critical { background: #3a0000; border: 2px solid #ff0000; }
+
+.timeline-content {
+  flex: 1;
+  background: #1c2128;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.timeline-action-type {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.timeline-result {
+  font-size: 11px;
+  color: #8b949e;
+  line-height: 1.5;
+}
+
+.timeline-target {
+  font-size: 10px;
+  color: #484f58;
+  font-family: 'Courier New', monospace;
+  margin-top: 2px;
+}
+
+.timeline-time {
+  font-size: 10px;
+  color: #484f58;
+  margin-top: 4px;
+}
+
+/* ── Day 8: Enrichment IP cards ───────────────────────────────── */
+.enrich-card {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.enrich-ip {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #79c0ff;
+}
+
+.rep-bar-wrap {
+  background: #21262d;
+  border-radius: 4px;
+  height: 6px;
+  margin: 6px 0 4px;
+  overflow: hidden;
+}
+
+.rep-bar {
+  height: 6px;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.rep-low    { background: #3fb950; }
+.rep-medium { background: #d29922; }
+.rep-high   { background: #f78166; }
+.rep-crit   { background: #ff0000; }
+
+/* ── Day 12: Badge styles ─────────────────────────────────────── */
+.risk-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.risk-critical { background: rgba(255,0,0,0.2); color: #ff6b6b; border: 1px solid #ff0000; }
+.risk-high     { background: rgba(247,129,102,0.2); color: #f78166; border: 1px solid #f78166; }
+.risk-medium   { background: rgba(210,153,34,0.2); color: #d29922; border: 1px solid #d29922; }
+.risk-low      { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid #3fb950; }
+
+.sev-badge, .type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sev-critical { background: rgba(255,0,0,0.15); color: #ff6b6b; }
+.sev-high     { background: rgba(247,129,102,0.15); color: #f78166; }
+.sev-medium   { background: rgba(210,153,34,0.15); color: #d29922; }
+.sev-low      { background: rgba(63,185,80,0.15); color: #3fb950; }
+
+.type-badge   { background: rgba(88,166,255,0.12); color: #79c0ff; }
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-open          { background: rgba(88,166,255,0.12); color: #79c0ff; }
+.status-investigating { background: rgba(210,153,34,0.12); color: #d29922; }
+.status-contained     { background: rgba(63,185,80,0.12);  color: #3fb950; }
+.status-closed        { background: rgba(139,148,158,0.12); color: #8b949e; }
+
+/* Tag pills inside enrichment */
+.threat-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(247,129,102,0.15);
+  color: #f78166;
+  border: 1px solid rgba(247,129,102,0.3);
+  margin: 2px;
+}
+
+/* ── Day 15: Case list ────────────────────────────────────────── */
+.case-item {
+  border-bottom: 1px solid #21262d;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.case-item:hover { background: #1c2128; }
+
+.case-id {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #79c0ff;
+}
+
+.case-host {
+  font-size: 11px;
+  color: #8b949e;
+  margin-top: 1px;
+}
+
+/* ── Day 18: Risk score ring ──────────────────────────────────── */
+.case-info-bar {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* ── Day 19: MTTR box ─────────────────────────────────────────── */
+.mttr-box {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.mttr-label { color: #8b949e; }
+.mttr-value { color: #3fb950; font-weight: 700; font-size: 16px; }
+
+/* ── Day 19: Filter buttons ───────────────────────────────────── */
+.filter-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #30363d;
+  background: transparent;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.filter-btn:hover { border-color: #58a6ff; color: #79c0ff; }
+.filter-btn.active { background: #1f6feb; border-color: #1f6feb; color: white; }
+
+/* ── Day 16: Case detail modal ────────────────────────────────── */
+.dark-modal {
+  background: #161b22;
+  color: #c9d1d9;
+}
+
+.dark-modal .modal-header { background: #1c2128; }
+.dark-modal .modal-footer { background: #1c2128; }
+.dark-modal .modal-title  { color: #e6edf3; }
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #21262d;
+  font-size: 12px;
+}
+
+.detail-key { color: #8b949e; font-weight: 500; }
+.detail-val { color: #c9d1d9; font-family: 'Courier New', monospace; font-size: 11px; }
+
+/* ── Day 17: Mobile responsive ────────────────────────────────── */
+@media (max-width: 992px) {
+  .col-lg-4 { margin-bottom: 12px; }
+  .stats-bar { gap: 12px; }
+  .stat-num { font-size: 18px; }
+}
+
+@media (max-width: 576px) {
+  .navbar .text-white-50 { display: none; }
+  .stats-bar .stat-item { min-width: 60px; }
+  .stat-num { font-size: 16px; }
+}
+
+/* ── Day 20: Scrollbar styling ────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* Utility */
+code {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  color: #79c0ff;
+}
