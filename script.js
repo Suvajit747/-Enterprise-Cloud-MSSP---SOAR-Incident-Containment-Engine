@@ -1,20 +1,5 @@
-/*
-=======================================================================
-  SOAR INCIDENT CONTAINMENT ENGINE — JAVASCRIPT
-  Connects dashboard UI to the FastAPI SOAR backend.
-
-  Backend: cd backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-=======================================================================
-  Week 1: Alert ingestion form, scenario buttons, normalization display
-  Week 2: Threat enrichment panel rendering
-  Week 3: Playbook timeline rendering
-  Week 4: Case list, case detail modal, status update, stats refresh
-=======================================================================
-*/
-
 const API = "http://127.0.0.1:8000";
 
-// Timeline icons per action type
 const ACTION_ICONS = {
   ALERT_INGESTED:           { icon: "📥", cls: "dot-info" },
   THREAT_INTEL_LOOKUP:      { icon: "🔍", cls: "dot-info" },
@@ -27,16 +12,9 @@ const ACTION_ICONS = {
   INCIDENT_ESCALATED:       { icon: "🚨", cls: "dot-critical" },
 };
 
-// Current filter state for case list
 let caseFilter = "all";
-// Currently selected case for modal status update
 let selectedCaseId = null;
-// Bootstrap modal instance
 let caseModal = null;
-
-// ─────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────
 
 function getToken() {
   return document.getElementById("roleSelector").value;
@@ -106,13 +84,9 @@ function escapeHTML(s) {
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 4: Server health check + stats refresh
-// ─────────────────────────────────────────────────────────────────────
-
 async function checkHealth() {
   try {
-    const data = await apiFetch("/health");
+    await apiFetch("/health");
     document.getElementById("serverStatus").textContent = "● Online";
     document.getElementById("serverStatus").className = "badge bg-success";
   } catch {
@@ -131,12 +105,8 @@ async function refreshStats() {
     document.getElementById("statActions").textContent = data.total_actions || 0;
     document.getElementById("statMTTR").textContent =
       data.avg_mttr_seconds ? data.avg_mttr_seconds + "s" : "—";
-  } catch { /* stats bar stays at 0 */ }
+  } catch {}
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 2: Render threat enrichment panel
-// ─────────────────────────────────────────────────────────────────────
 
 function renderEnrichment(enrichments) {
   const panel = document.getElementById("enrichPanel");
@@ -183,16 +153,11 @@ function renderEnrichment(enrichments) {
   panel.style.display = "block";
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 3: Render playbook action timeline
-// ─────────────────────────────────────────────────────────────────────
-
 function renderTimeline(actions, caseData, mttr) {
   document.getElementById("timelinePlaceholder").style.display = "none";
   const tl = document.getElementById("timeline");
   tl.style.display = "block";
 
-  // Active case bar
   const bar = document.getElementById("activeCaseBar");
   bar.style.display = "block";
   document.getElementById("activeCaseId").textContent = `Case #${caseData.case_id}`;
@@ -210,7 +175,6 @@ function renderTimeline(actions, caseData, mttr) {
     "status-badge " + statusClass(caseData.status);
   document.getElementById("activeCaseStatus").textContent = caseData.status?.toUpperCase();
 
-  // Timeline items
   let html = "";
   actions.forEach(action => {
     const meta = ACTION_ICONS[action.action_type] || { icon: "⚙", cls: "dot-info" };
@@ -229,15 +193,10 @@ function renderTimeline(actions, caseData, mttr) {
   });
   tl.innerHTML = html;
 
-  // MTTR
   document.getElementById("mttrBox").style.display = "flex";
   document.getElementById("mttrValue").textContent =
     `${mttr}s (${actions.length} actions)`;
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 4: Render case list
-// ─────────────────────────────────────────────────────────────────────
 
 let allCases = [];
 
@@ -296,12 +255,8 @@ async function refreshCases() {
     const data = await apiFetch("/cases");
     allCases = data.cases || [];
     renderCaseList();
-  } catch (e) { /* no cases yet, not an error */ }
+  } catch (e) {}
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 4: Case detail modal
-// ─────────────────────────────────────────────────────────────────────
 
 async function openCaseDetail(caseId) {
   selectedCaseId = caseId;
@@ -316,10 +271,8 @@ async function openCaseDetail(caseId) {
   try {
     const c = await apiFetch(`/cases/${caseId}`);
 
-    // Set current status in the update selector
     document.getElementById("statusUpdateSelect").value = c.status;
 
-    // Build enrichment summary
     const enrichSummary = (c.enrichments || []).map(e =>
       `<div class="detail-row">
          <span class="detail-key">${e.ip}</span>
@@ -327,7 +280,6 @@ async function openCaseDetail(caseId) {
        </div>`
     ).join("");
 
-    // Build action timeline for modal
     const actions = (c.actions || []).map(a => {
       const meta = ACTION_ICONS[a.action_type] || { icon: "⚙" };
       return `<div class="timeline-item">
@@ -384,10 +336,6 @@ async function openCaseDetail(caseId) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// WEEK 3+4: Alert ingestion — main action
-// ─────────────────────────────────────────────────────────────────────
-
 async function ingestAlert(payload, endpoint) {
   document.getElementById("ingestLoading").style.display = "block";
   document.getElementById("ingestBtn").disabled = true;
@@ -395,10 +343,8 @@ async function ingestAlert(payload, endpoint) {
   try {
     const data = await apiFetch(endpoint, "POST", payload);
 
-    // Week 2: show enrichment
     renderEnrichment(data.enrichments);
 
-    // Week 3: show timeline
     renderTimeline(
       data.playbook_actions,
       {
@@ -411,7 +357,6 @@ async function ingestAlert(payload, endpoint) {
       data.mttr_seconds
     );
 
-    // Week 4: refresh case list + stats
     await refreshCases();
     await refreshStats();
 
@@ -430,30 +375,21 @@ async function ingestAlert(payload, endpoint) {
   document.getElementById("ingestBtn").disabled = false;
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// DOM READY — wire up all events
-// ─────────────────────────────────────────────────────────────────────
-
 document.addEventListener("DOMContentLoaded", function () {
 
-  // Init bootstrap modal
   caseModal = new bootstrap.Modal(document.getElementById("caseModal"));
 
-  // Check server + load initial data
   checkHealth();
   refreshStats();
   refreshCases();
 
-  // Refresh every 15 seconds
   setInterval(() => { checkHealth(); refreshStats(); refreshCases(); }, 15000);
 
-  // Role selector change — refresh data with new permissions
   document.getElementById("roleSelector").addEventListener("change", function () {
     refreshStats();
     refreshCases();
   });
 
-  // Scenario buttons (Week 1)
   document.querySelectorAll(".btn-scenario").forEach(btn => {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".btn-scenario").forEach(b => b.classList.remove("active"));
@@ -462,7 +398,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Custom ingest button (Week 1)
   document.getElementById("ingestBtn").addEventListener("click", function () {
     const desc = document.getElementById("alertDesc").value.trim();
     const ip = document.getElementById("alertIP").value.trim();
@@ -482,7 +417,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ingestAlert(payload, "/alert/ingest");
   });
 
-  // Filter buttons (Week 4)
   document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -492,13 +426,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Refresh cases button
   document.getElementById("refreshCasesBtn").addEventListener("click", async function () {
     await refreshCases();
     await refreshStats();
   });
 
-  // Update case status (Week 4 — RBAC: senior_analyst/admin only)
   document.getElementById("updateStatusBtn").addEventListener("click", async function () {
     if (!selectedCaseId) return;
     const newStatus = document.getElementById("statusUpdateSelect").value;
