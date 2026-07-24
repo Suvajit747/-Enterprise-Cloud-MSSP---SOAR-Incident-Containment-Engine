@@ -1,29 +1,3 @@
-/*
-=======================================================================
-  SOAR INCIDENT CONTAINMENT ENGINE — STYLES
-  Dark security operations center theme
-  Member 4: Frontend + Documentation
-=======================================================================
-  Day 1-2:  Base dark theme, navbar, body
-  Day 3-4:  Panel cards, stats bar
-  Day 5-6:  Alert form inputs, scenario buttons
-  Day 7:    README + CSS polish
-  Day 8-9:  Enrichment panel, IP reputation badges
-  Day 10:   Timeline component
-  Day 11:   Error toast, loading states
-  Day 12:   Entity/action type badges
-  Day 13:   Architecture diagram styles
-  Day 14:   API docs CSS
-  Day 15:   Case list items
-  Day 16:   Case detail modal
-  Day 17:   Mobile responsive
-  Day 18:   Risk score meter
-  Day 19:   MTTR box, filter buttons
-  Day 20:   Final polish, transitions
-=======================================================================
-*/
-
-/* ── Day 1: Global dark base ─────────────────────────────────── */
 * { box-sizing: border-box; }
 
 body {
@@ -34,14 +8,12 @@ body {
   min-height: 100vh;
 }
 
-/* ── Day 2: Navbar ───────────────────────────────────────────── */
 #mainNav {
   background: #161b22;
   border-bottom: 1px solid #21262d;
   box-shadow: 0 1px 8px rgba(0,0,0,0.5);
 }
 
-/* ── Day 3: Stats bar ────────────────────────────────────────── */
 .stats-bar {
   background: #161b22;
   border-bottom: 1px solid #21262d;
@@ -68,13 +40,12 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* ── Day 3: Panel cards ──────────────────────────────────────── */
 .panel {
   background: #161b22;
   border: 1px solid #21262d;
   border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.2s; /* Day 20 */
+  transition: border-color 0.2s;
 }
 
 .panel:hover {
@@ -101,7 +72,6 @@ body {
   padding: 14px;
 }
 
-/* ── Day 5: Form inputs dark theme ───────────────────────────── */
 .dark-input {
   background: #0d1117 !important;
   border: 1px solid #30363d !important;
@@ -140,7 +110,6 @@ body {
   margin: 10px 0;
 }
 
-/* ── Day 6: Scenario buttons ──────────────────────────────────── */
 .btn-scenario {
   font-size: 11px;
   font-weight: 600;
@@ -166,7 +135,6 @@ body {
   border-color: #1f6feb;
 }
 
-/* ── Day 10: Playbook timeline ────────────────────────────────── */
 .timeline-item {
   display: flex;
   gap: 10px;
@@ -237,7 +205,6 @@ body {
   margin-top: 4px;
 }
 
-/* ── Day 8: Enrichment IP cards ───────────────────────────────── */
 .enrich-card {
   background: #0d1117;
   border: 1px solid #21262d;
@@ -272,7 +239,6 @@ body {
 .rep-high   { background: #f78166; }
 .rep-crit   { background: #ff0000; }
 
-/* ── Day 12: Badge styles ─────────────────────────────────────── */
 .risk-badge {
   font-size: 12px;
   font-weight: 700;
@@ -315,7 +281,6 @@ body {
 .status-contained     { background: rgba(63,185,80,0.12);  color: #3fb950; }
 .status-closed        { background: rgba(139,148,158,0.12); color: #8b949e; }
 
-/* Tag pills inside enrichment */
 .threat-tag {
   display: inline-block;
   font-size: 10px;
@@ -328,7 +293,6 @@ body {
   margin: 2px;
 }
 
-/* ── Day 15: Case list ────────────────────────────────────────── */
 .case-item {
   border-bottom: 1px solid #21262d;
   padding: 10px 14px;
@@ -351,7 +315,6 @@ body {
   margin-top: 1px;
 }
 
-/* ── Day 18: Risk score ring ──────────────────────────────────── */
 .case-info-bar {
   background: #0d1117;
   border: 1px solid #21262d;
@@ -359,7 +322,6 @@ body {
   padding: 10px 12px;
 }
 
-/* ── Day 19: MTTR box ─────────────────────────────────────────── */
 .mttr-box {
   background: #0d1117;
   border: 1px solid #21262d;
@@ -374,7 +336,6 @@ body {
 .mttr-label { color: #8b949e; }
 .mttr-value { color: #3fb950; font-weight: 700; font-size: 16px; }
 
-/* ── Day 19: Filter buttons ───────────────────────────────────── */
 .filter-btn {
   font-size: 11px;
   padding: 3px 10px;
@@ -389,7 +350,6 @@ body {
 .filter-btn:hover { border-color: #58a6ff; color: #79c0ff; }
 .filter-btn.active { background: #1f6feb; border-color: #1f6feb; color: white; }
 
-/* ── Day 16: Case detail modal ────────────────────────────────── */
 .dark-modal {
   background: #161b22;
   color: #c9d1d9;
@@ -410,7 +370,6 @@ body {
 .detail-key { color: #8b949e; font-weight: 500; }
 .detail-val { color: #c9d1d9; font-family: 'Courier New', monospace; font-size: 11px; }
 
-/* ── Day 17: Mobile responsive ────────────────────────────────── */
 @media (max-width: 992px) {
   .col-lg-4 { margin-bottom: 12px; }
   .stats-bar { gap: 12px; }
@@ -423,13 +382,11 @@ body {
   .stat-num { font-size: 16px; }
 }
 
-/* ── Day 20: Scrollbar styling ────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0d1117; }
 ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #484f58; }
 
-/* Utility */
 code {
   background: #0d1117;
   border: 1px solid #21262d;
