@@ -1,8 +1,5 @@
 SOAR Incident Containment Engine
-### Infotact Solutions — Cybersecurity Internship 2026
 ### Project 3: Enterprise Cloud / MSSP - SOAR Incident Containment Engine
-
----
 
 ## What This Project Does
 
