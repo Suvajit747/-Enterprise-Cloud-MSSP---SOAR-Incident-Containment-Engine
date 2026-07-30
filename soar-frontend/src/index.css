@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------- */
+/* Design tokens — SOAR Command Center                                    */
+/* Dark SOC console: near-black navy base, cyan primary accent, restrained */
+/* purple for automation, semantic severity colors, monospace for data.   */
+/* ---------------------------------------------------------------------- */
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Surfaces */
+  --color-base: #0a0d13;
+  --color-base-raised: #0d1119;
+  --color-surface: #10141d;
+  --color-surface-hover: #151a25;
+  --color-surface-2: #161b26;
+  --color-line: #212836;
+  --color-line-soft: #1a2029;
+
+  /* Text */
+  --color-text: #e7ebf3;
+  --color-text-muted: #8891a3;
+  --color-text-faint: #5c6577;
+
+  /* Brand / accent */
+  --color-accent: #29b6d8;
+  --color-accent-soft: #29b6d81a;
+  --color-accent-strong: #4fd1e8;
+  --color-violet: #8b7cf0;
+  --color-violet-soft: #8b7cf01a;
+
+  /* Severity / status semantics */
+  --color-critical: #ef4a5f;
+  --color-critical-soft: #ef4a5f1a;
+  --color-high: #f0883e;
+  --color-high-soft: #f0883e1a;
+  --color-medium: #eab83f;
+  --color-medium-soft: #eab83f1a;
+  --color-low: #4fa8e0;
+  --color-low-soft: #4fa8e01a;
+  --color-healthy: #3bc282;
+  --color-healthy-soft: #3bc2821a;
+  --color-neutral: #7c8699;
+  --color-neutral-soft: #7c86991a;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-base);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+::selection {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* Scrollbars — quiet, console-like */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #232b3a;
+  border-radius: 8px;
+  border: 2px solid var(--color-base);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #2b3446;
+}
+
+/* Focus visibility for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--color-healthy-soft); }
+  50% { opacity: 0.85; box-shadow: 0 0 0 4px transparent; }
+}
+.status-pulse {
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+/* Tabular numerals for data-dense tables */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}

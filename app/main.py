@@ -1,6 +1,9 @@
+import logging
+from time import perf_counter
 from typing import Literal
+from uuid import uuid4
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import case, func, or_, text
 from sqlalchemy.orm import Session
@@ -8,8 +11,12 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .config import API_TITLE, API_VERSION
 from .database import Base, SessionLocal, create_missing_indexes, engine
+from .logging_config import configure_logging
 from .playbook import PlaybookEngine
 from .threat_intelligence import ThreatIntelligenceService
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
 create_missing_indexes()
@@ -23,6 +30,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_http_requests(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    started_at = perf_counter()
+    client_host = request.client.host if request.client else None
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = round((perf_counter() - started_at) * 1000, 2)
+        logger.exception(
+            "request_failed",
+            extra={
+                "event": "request_failed",
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": 500,
+                "duration_ms": duration_ms,
+                "client_ip": client_host,
+            },
+        )
+        raise
+
+    duration_ms = round((perf_counter() - started_at) * 1000, 2)
+    logger.info(
+        "request_completed",
+        extra={
+            "event": "request_completed",
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+            "client_ip": client_host,
+        },
+    )
+    return response
 
 
 def get_db():
@@ -46,6 +93,10 @@ def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
     except Exception as error:
+        logger.exception(
+            "database_health_check_failed",
+            extra={"event": "database_health_check_failed"},
+        )
         raise HTTPException(status_code=500, detail="Database connection failed") from error
     return {
         "status": "healthy",
