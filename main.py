@@ -1,33 +1,3 @@
-"""
-=======================================================================
-  SOAR INCIDENT CONTAINMENT ENGINE — BACKEND
-  Project 3: Enterprise Cloud / MSSP - SOAR Incident Containment Engine
-  Infotact Solutions Cybersecurity Internship 2026
-=======================================================================
-
-  Week 1: Webhook Ingestion and Data Normalization
-    - FastAPI SOAR listener service
-    - Simulated SIEM alert ingestion (JSON payloads)
-    - Timestamp normalization, IP extraction, schema standardization
-
-  Week 2: Automated Threat Enrichment
-    - Threat intelligence integration (AbuseIPDB / VirusTotal mock)
-    - IP reputation scoring
-    - Geolocation enrichment
-
-  Week 3: Playbook Automation and API Orchestration
-    - Automated defensive playbook execution
-    - Mock EDR isolation (endpoint containment)
-    - Mock AWS Security Group firewall block
-    - Conditional playbook logic based on risk score
-
-  Week 4: Case Management Dashboard and RBAC
-    - Full case timeline with chronological action log
-    - Role-Based Access Control (analyst / senior_analyst / admin)
-    - Case status management
-    - Statistics and reporting endpoint
-=======================================================================
-"""
 
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,11 +10,6 @@ import ipaddress
 from datetime import datetime, timezone
 
 
-# ═══════════════════════════════════════════════════════════════════
-# WEEK 4: ROLE-BASED ACCESS CONTROL (RBAC)
-# Roles: analyst, senior_analyst, admin
-# senior_analyst and admin can approve high-impact playbooks
-# ═══════════════════════════════════════════════════════════════════
 
 USERS = {
     "analyst_token":         {"username": "analyst1",       "role": "analyst"},
@@ -79,20 +44,8 @@ def require_permission(permission: str):
     return checker
 
 
-# ═══════════════════════════════════════════════════════════════════
-# IN-MEMORY STORAGE
-# Stores all cases, alerts, and playbook action logs
-# ═══════════════════════════════════════════════════════════════════
-
 cases: dict[str, dict] = {}        # case_id -> case object
 action_log: list[dict] = []        # chronological list of all actions taken
-
-
-# ═══════════════════════════════════════════════════════════════════
-# WEEK 1: DATA NORMALIZATION ENGINE
-# Normalizes raw SIEM alert payloads into a standard schema
-# Handles different timestamp formats, extracts IPs, classifies alert type
-# ═══════════════════════════════════════════════════════════════════
 
 IP_PATTERN = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
@@ -192,13 +145,6 @@ def normalize_alert(raw: dict) -> dict:
     }
 
 
-# ═══════════════════════════════════════════════════════════════════
-# WEEK 2: THREAT INTELLIGENCE ENRICHMENT ENGINE
-# Simulates AbuseIPDB + VirusTotal lookups
-# Returns reputation score, geolocation, known threat actor tags
-# ═══════════════════════════════════════════════════════════════════
-
-# Simulated threat intelligence database
 THREAT_DB = {
     "45.33.32.156":   {"score": 95, "country": "US", "isp": "Linode LLC",
                        "tags": ["scanner", "known_bad"], "reports": 847},
