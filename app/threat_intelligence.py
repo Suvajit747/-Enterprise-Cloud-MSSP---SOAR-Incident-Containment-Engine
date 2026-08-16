@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 import ipaddress
 import json
 import re
@@ -7,6 +8,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from .config import ABUSEIPDB_API_KEY, VIRUSTOTAL_API_KEY
+from .services.risk_service import calculate_risk_breakdown, calculate_risk_level
 
 
 class ThreatIntelligenceService:
@@ -33,17 +35,36 @@ class ThreatIntelligenceService:
             return cached_response.copy()
 
         if not VIRUSTOTAL_API_KEY:
-            response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+            response = self._build_provider_response(
+                provider="VirusTotal",
+                status="mock",
+                payload=self.VIRUSTOTAL_MOCK_RESPONSE,
+                error="VIRUSTOTAL_API_KEY is not configured; using mock fallback.",
+            )
         else:
             indicator = self._extract_virustotal_indicator(alert)
             if indicator is None:
-                response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+                response = self._build_provider_response(
+                    provider="VirusTotal",
+                    status="mock",
+                    payload=self.VIRUSTOTAL_MOCK_RESPONSE,
+                    error="No supported VirusTotal indicator found; using mock fallback.",
+                )
             else:
                 report = self._fetch_virustotal_report(indicator)
                 if report is None:
-                    response = self.VIRUSTOTAL_MOCK_RESPONSE.copy()
+                    response = self._build_provider_response(
+                        provider="VirusTotal",
+                        status="mock",
+                        payload=self.VIRUSTOTAL_MOCK_RESPONSE,
+                        error="VirusTotal was unavailable or returned an error; using mock fallback.",
+                    )
                 else:
-                    response = self._build_virustotal_response(report)
+                    response = self._build_provider_response(
+                        provider="VirusTotal",
+                        status="live",
+                        payload=self._build_virustotal_response(report),
+                    )
 
         self.VIRUSTOTAL_CACHE[cache_key] = response.copy()
         return response.copy()
@@ -55,41 +76,63 @@ class ThreatIntelligenceService:
             return cached_response.copy()
 
         if not ABUSEIPDB_API_KEY:
-            response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+            response = self._build_provider_response(
+                provider="AbuseIPDB",
+                status="mock",
+                payload={
+                    **self.ABUSEIPDB_MOCK_RESPONSE,
+                    "malicious": self.ABUSEIPDB_MOCK_RESPONSE["score"] > 80,
+                },
+                error="ABUSEIPDB_API_KEY is not configured; using mock fallback.",
+            )
         else:
             ip_address = self._extract_ip_address(alert)
             if ip_address is None:
-                response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+                response = self._build_provider_response(
+                    provider="AbuseIPDB",
+                    status="mock",
+                    payload={
+                        **self.ABUSEIPDB_MOCK_RESPONSE,
+                        "malicious": self.ABUSEIPDB_MOCK_RESPONSE["score"] > 80,
+                    },
+                    error="No IP address found for AbuseIPDB lookup; using mock fallback.",
+                )
             else:
                 report = self._fetch_abuseipdb_report(ip_address)
                 if report is None:
-                    response = self.ABUSEIPDB_MOCK_RESPONSE.copy()
+                    response = self._build_provider_response(
+                        provider="AbuseIPDB",
+                        status="mock",
+                        payload={
+                            **self.ABUSEIPDB_MOCK_RESPONSE,
+                            "malicious": self.ABUSEIPDB_MOCK_RESPONSE["score"] > 80,
+                        },
+                        error="AbuseIPDB was unavailable or returned an error; using mock fallback.",
+                    )
                 else:
-                    response = self._build_abuseipdb_response(report)
+                    abuseipdb_response = self._build_abuseipdb_response(report)
+                    response = self._build_provider_response(
+                        provider="AbuseIPDB",
+                        status="live",
+                        payload={
+                            **abuseipdb_response,
+                            "malicious": abuseipdb_response["score"] > 80,
+                        },
+                    )
 
         self.ABUSEIPDB_CACHE[cache_key] = response.copy()
         return response.copy()
 
     def calculate_risk_score(self, alert, virus_total, abuse_ipdb):
-        severity_scores = {
-            "critical": 100,
-            "high": 75,
-            "medium": 50,
-            "low": 25,
-        }
-        risk_score = severity_scores.get(alert.severity, 0)
-        if virus_total.get("malicious") is True:
-            risk_score += 10
-        if abuse_ipdb.get("score", 0) > 80:
-            risk_score += 10
-        return risk_score
+        return int(
+            self.calculate_risk_breakdown(alert, virus_total, abuse_ipdb)["final_score"]
+        )
 
     def calculate_risk_level(self, risk_score):
-        if risk_score >= 75:
-            return "High"
-        if risk_score >= 50:
-            return "Medium"
-        return "Low"
+        return calculate_risk_level(risk_score)
+
+    def calculate_risk_breakdown(self, alert, virus_total, abuse_ipdb):
+        return calculate_risk_breakdown(alert, virus_total, abuse_ipdb)
 
     def _get_alert_cache_key(self, alert):
         alert_id = getattr(alert, "id", None)
@@ -201,4 +244,13 @@ class ThreatIntelligenceService:
         return {
             "score": int(data.get("abuseConfidenceScore", 0) or 0),
             "country": data.get("countryCode") or "Unknown",
+        }
+
+    def _build_provider_response(self, provider, status, payload, error=None):
+        return {
+            "provider": provider,
+            "status": status,
+            **payload,
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "error": error,
         }

@@ -16,6 +16,9 @@ export interface Alert {
   description: string;
   status: AlertStatus;
   created_at: string;
+  updated_at?: string | null;
+  incident_id?: number | null;
+  duplicate_of_alert_id?: number | null;
 }
 
 export interface AlertCreate {
@@ -48,6 +51,16 @@ export interface DashboardMetrics {
   automation_completed: number;
   high_risk_alerts: number;
   playbooks_executed: number;
+  open_incidents?: number;
+  total_incidents?: number;
+  critical_alerts?: number;
+  successful_playbooks?: number;
+  failed_playbooks?: number;
+  automation_success_rate?: number | null;
+  average_time_to_contain?: number | null;
+  average_time_to_resolve?: number | null;
+  average_time_to_contain_seconds?: number | null;
+  average_time_to_resolve_seconds?: number | null;
 }
 
 export interface DailyAlertCount {
@@ -62,16 +75,34 @@ export interface StatsResponse {
 }
 
 export interface VirusTotalResult {
+  provider?: string;
+  status?: "live" | "mock" | "unavailable";
   malicious: boolean;
   score: number;
+  timestamp?: string;
+  error?: string | null;
 }
 
 export interface AbuseIPDBResult {
+  provider?: string;
+  status?: "live" | "mock" | "unavailable";
+  malicious?: boolean;
   score: number;
   country: string;
+  timestamp?: string;
+  error?: string | null;
 }
 
-export type RiskLevel = "Low" | "Medium" | "High";
+export type RiskLevel = "Low" | "Medium" | "High" | "Critical";
+
+export interface RiskBreakdown {
+  base_score: number;
+  virustotal_modifier: number;
+  abuseipdb_modifier: number;
+  raw_score: number;
+  final_score: number;
+  risk_level: RiskLevel;
+}
 
 export interface ThreatEnrichment {
   alert_id: number;
@@ -79,6 +110,7 @@ export interface ThreatEnrichment {
   abuse_ipdb: AbuseIPDBResult;
   risk_level: RiskLevel;
   risk_score: number;
+  risk_breakdown?: RiskBreakdown;
 }
 
 export type PlaybookAction =
@@ -94,13 +126,20 @@ export interface Playbook {
   action: PlaybookAction;
 }
 
-export type PlaybookExecutionStatus = "completed" | "skipped";
+export type PlaybookExecutionStatus = "queued" | "running" | "completed" | "failed" | "skipped";
 
 export interface PlaybookExecutionResult {
   alert_id: number;
   risk_score: number;
+  risk_level?: RiskLevel;
   action: PlaybookAction;
   status: PlaybookExecutionStatus;
+  execution_id?: number;
+  playbook_name?: string;
+  incident_id?: number | null;
+  simulated?: boolean;
+  message?: string | null;
+  details?: Record<string, unknown>;
 }
 
 export interface TimelineEvent {

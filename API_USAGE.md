@@ -1,7 +1,5 @@
 # SOAR Incident Containment Engine API Usage
 
-This document describes the current backend API contract for frontend integration.
-
 Base URL:
 
 ```text
@@ -20,32 +18,9 @@ Run locally:
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-## Environment
-
-Supported environment variables:
-
-```text
-DATABASE_URL=sqlite:///./alerts.db
-API_TITLE=SOAR Incident Containment Engine
-API_VERSION=1.0.0
-VIRUSTOTAL_API_KEY=
-ABUSEIPDB_API_KEY=
-```
-
-If `VIRUSTOTAL_API_KEY` or `ABUSEIPDB_API_KEY` is missing, the backend returns mock enrichment data.
-
 ## Shared Values
 
-Valid severities:
-
-```text
-low
-medium
-high
-critical
-```
-
-Valid statuses:
+Alert statuses:
 
 ```text
 new
@@ -55,17 +30,49 @@ resolved
 closed
 ```
 
-Common not found response:
+Incident statuses:
+
+```text
+open
+investigating
+contained
+resolved
+closed
+```
+
+Severities:
+
+```text
+low
+medium
+high
+critical
+```
+
+Common missing-resource responses:
 
 ```json
-{
-  "detail": "Alert not found"
-}
+{ "detail": "Alert not found" }
 ```
+
+```json
+{ "detail": "Incident not found" }
+```
+
+## System
+
+```text
+GET /health
+GET /version
+```
+
+`GET /health` returns database connectivity, service name, and version. All HTTP
+responses include `X-Request-ID`.
 
 ## POST /alerts
 
-Creates a new alert.
+Creates an alert. Duplicate alerts are kept, marked with `duplicate_of_alert_id`,
+and linked to the same incident when the original alert already has one.
 
 Request:
 
@@ -74,7 +81,7 @@ Request:
   "source": "Splunk",
   "severity": "high",
   "title": "Brute Force Attack",
-  "description": "Multiple failed login attempts detected"
+  "description": "Multiple failed login attempts detected from 203.0.113.10"
 }
 ```
 
@@ -85,18 +92,15 @@ Success response: `201 Created`
   "source": "Splunk",
   "severity": "high",
   "title": "Brute Force Attack",
-  "description": "Multiple failed login attempts detected",
+  "description": "Multiple failed login attempts detected from 203.0.113.10",
   "id": 1,
   "status": "new",
-  "created_at": "2026-07-16T10:30:00"
+  "created_at": "2026-08-16T10:30:00",
+  "updated_at": "2026-08-16T10:30:00",
+  "incident_id": null,
+  "duplicate_of_alert_id": null
 }
 ```
-
-Frontend notes:
-
-- Use this endpoint when a user submits a new alert or when ingesting alerts from a frontend form.
-- `title` and `description` cannot be empty or whitespace-only.
-- Invalid severity returns `422`.
 
 ## GET /alerts
 
@@ -113,268 +117,308 @@ page=1
 limit=10
 ```
 
-Example:
-
-```text
-GET /alerts?status=new&severity=high&search=Brute&page=1&limit=10
-```
-
-Success response: `200 OK`
-
-```json
-[
-  {
-    "source": "Splunk",
-    "severity": "high",
-    "title": "Brute Force Attack",
-    "description": "Multiple failed login attempts detected",
-    "id": 1,
-    "status": "new",
-    "created_at": "2026-07-16T10:30:00"
-  }
-]
-```
-
-Frontend notes:
-
-- Use `page` and `limit` for table pagination.
-- Use `search` for title and description search.
-- Use `status`, `severity`, and `source` for filter controls.
-- `page` must be at least `1`.
-- `limit` must be between `1` and `100`.
-
 ## GET /alerts/{alert_id}
 
-Returns one alert by ID.
-
-Example:
-
-```text
-GET /alerts/1
-```
-
-Success response: `200 OK`
-
-```json
-{
-  "source": "Splunk",
-  "severity": "high",
-  "title": "Brute Force Attack",
-  "description": "Multiple failed login attempts detected",
-  "id": 1,
-  "status": "new",
-  "created_at": "2026-07-16T10:30:00"
-}
-```
-
-Frontend notes:
-
-- Use this endpoint for alert detail pages.
-- Missing alerts return `404`.
+Returns one alert by ID. Missing alerts return `404`.
 
 ## PATCH /alerts/{id}/status
 
-Updates alert status.
+Updates alert status and records a persisted `STATUS_CHANGED` audit event.
 
 Request:
 
 ```json
-{
-  "status": "investigating"
-}
+{ "status": "investigating" }
 ```
-
-Success response: `200 OK`
-
-```json
-{
-  "source": "Splunk",
-  "severity": "high",
-  "title": "Brute Force Attack",
-  "description": "Multiple failed login attempts detected",
-  "id": 1,
-  "status": "investigating",
-  "created_at": "2026-07-16T10:30:00"
-}
-```
-
-Frontend notes:
-
-- Use this endpoint for status dropdowns or workflow buttons.
-- Invalid statuses return `422`.
-- Missing alerts return `404`.
 
 ## DELETE /alerts/{id}
 
 Deletes one alert.
 
-Example:
-
-```text
-DELETE /alerts/1
-```
-
-Success response: `200 OK`
+Response:
 
 ```json
-{
-  "message": "Alert deleted successfully"
-}
+{ "message": "Alert deleted successfully" }
 ```
-
-Frontend notes:
-
-- Use confirmation UI before calling this endpoint.
-- Missing alerts return `404`.
 
 ## GET /alerts/{id}/enrichment
 
-Returns threat intelligence enrichment for one alert.
+Runs threat intelligence enrichment for one alert, records enrichment/risk events,
+and returns provider status plus risk breakdown.
 
-Example:
-
-```text
-GET /alerts/1/enrichment
-```
-
-Success response: `200 OK`
+Success response:
 
 ```json
 {
   "alert_id": 1,
   "virus_total": {
+    "provider": "VirusTotal",
+    "status": "mock",
     "malicious": true,
-    "score": 92
+    "score": 92,
+    "timestamp": "2026-08-16T10:31:00Z",
+    "error": "VIRUSTOTAL_API_KEY is not configured; using mock fallback."
   },
   "abuse_ipdb": {
+    "provider": "AbuseIPDB",
+    "status": "mock",
+    "malicious": true,
     "score": 84,
-    "country": "US"
+    "country": "US",
+    "timestamp": "2026-08-16T10:31:00Z",
+    "error": "ABUSEIPDB_API_KEY is not configured; using mock fallback."
   },
-  "risk_level": "High",
-  "risk_score": 95
+  "risk_level": "Critical",
+  "risk_score": 95,
+  "risk_breakdown": {
+    "base_score": 75,
+    "virustotal_modifier": 10,
+    "abuseipdb_modifier": 10,
+    "raw_score": 95,
+    "final_score": 95,
+    "risk_level": "Critical"
+  }
 }
 ```
 
-Frontend notes:
+Provider statuses:
 
-- Use this endpoint on alert detail pages or enrichment panels.
-- Results are cached in memory during runtime for repeated requests.
-- If API keys are not configured, mock data is returned.
-- Missing alerts return `404`.
+```text
+live
+mock
+unavailable
+```
+
+The existing mock fallback behavior remains, but it is now explicit.
 
 ## POST /alerts/{id}/execute
 
-Runs the mock SOAR playbook for one alert.
+Executes the rule-based playbook workflow, persists execution history, creates
+timeline events, and creates or reuses an incident when appropriate.
 
-Example:
-
-```text
-POST /alerts/1/execute
-```
-
-Success response: `200 OK`
+Success response:
 
 ```json
 {
   "alert_id": 1,
   "risk_score": 95,
+  "risk_level": "Critical",
   "action": "block_ip",
-  "status": "completed"
+  "status": "completed",
+  "execution_id": 1,
+  "playbook_name": "High Risk Network Containment",
+  "incident_id": 1,
+  "simulated": true,
+  "message": "SIMULATED playbook action 'block_ip' executed. No real firewall, EDR, cloud, identity, or network containment integration was invoked.",
+  "risk_breakdown": {
+    "base_score": 75,
+    "virustotal_modifier": 10,
+    "abuseipdb_modifier": 10,
+    "raw_score": 95,
+    "final_score": 95,
+    "risk_level": "Critical"
+  },
+  "enrichment": {
+    "virus_total": {
+      "provider": "VirusTotal",
+      "status": "mock",
+      "malicious": true,
+      "score": 92,
+      "timestamp": "2026-08-16T10:31:00Z",
+      "error": "VIRUSTOTAL_API_KEY is not configured; using mock fallback."
+    },
+    "abuse_ipdb": {
+      "provider": "AbuseIPDB",
+      "status": "mock",
+      "malicious": true,
+      "score": 84,
+      "country": "US",
+      "timestamp": "2026-08-16T10:31:00Z",
+      "error": "ABUSEIPDB_API_KEY is not configured; using mock fallback."
+    }
+  }
 }
 ```
 
-Playbook risk rules:
+Backward-compatible fields still present:
 
 ```text
-risk >= 90 -> block_ip
-risk >= 75 -> isolate_endpoint
-risk >= 50 -> notify_admin
-risk < 50 -> create_incident
+alert_id
+risk_score
+action
+status
 ```
 
-Frontend notes:
-
-- Use this endpoint from an "Execute Playbook" button.
-- The current implementation is mocked and does not call real firewall or EDR systems.
-- Missing alerts return `404`.
+No real containment integrations are invoked.
 
 ## GET /playbooks
 
-Returns available mock playbooks.
+Returns the static playbook catalog:
 
-Example:
-
-```text
-GET /playbooks
+```json
+[
+  { "id": 1, "name": "High Risk Malware", "action": "isolate_endpoint" },
+  { "id": 2, "name": "Brute Force", "action": "block_ip" },
+  { "id": 3, "name": "Medium Severity Incident", "action": "create_incident" },
+  { "id": 4, "name": "Low Severity Notification", "action": "notify_admin" },
+  { "id": 5, "name": "No Action Required", "action": "no_action" }
+]
 ```
 
-Success response: `200 OK`
+## GET /playbook-executions
+
+Returns persisted playbook executions.
+
+Query parameters:
+
+```text
+status=completed
+alert_id=1
+incident_id=1
+page=1
+limit=10
+```
+
+## GET /alerts/{id}/playbook-executions
+
+Returns persisted playbook executions for one alert.
+
+Example response:
 
 ```json
 [
   {
     "id": 1,
-    "name": "High Risk Malware",
-    "action": "isolate_endpoint"
-  },
-  {
-    "id": 2,
-    "name": "Brute Force",
-    "action": "block_ip"
+    "alert_id": 1,
+    "incident_id": 1,
+    "playbook_name": "High Risk Network Containment",
+    "action": "block_ip",
+    "risk_score": 95,
+    "status": "completed",
+    "started_at": "2026-08-16T10:31:00",
+    "completed_at": "2026-08-16T10:31:01",
+    "error_message": null,
+    "details": {
+      "simulated": true
+    }
   }
 ]
 ```
 
-Frontend notes:
-
-- Use this endpoint to render playbook cards, dropdowns, or automation reference panels.
-- The list is static for now.
-
 ## GET /alerts/{id}/timeline
 
-Returns a mock investigation timeline.
+Returns persisted audit events ordered chronologically.
 
-Example:
-
-```text
-GET /alerts/1/timeline
-```
-
-Success response: `200 OK`
+Example response:
 
 ```json
 [
   {
-    "event": "Alert Created"
+    "id": 1,
+    "event": "Alert Created",
+    "event_type": "ALERT_CREATED",
+    "description": "Alert 1 created",
+    "actor": "api",
+    "timestamp": "2026-08-16T10:30:00",
+    "metadata": {
+      "source": "Splunk",
+      "severity": "high"
+    }
   },
   {
-    "event": "Threat Intelligence Completed"
-  },
-  {
-    "event": "Risk Score Calculated"
-  },
-  {
-    "event": "Playbook Executed"
+    "id": 2,
+    "event": "Risk Score Calculated",
+    "event_type": "RISK_CALCULATED",
+    "description": "Risk score calculated for alert 1",
+    "actor": "api",
+    "timestamp": "2026-08-16T10:31:00",
+    "metadata": {
+      "final_score": 95,
+      "risk_level": "Critical"
+    }
   }
 ]
 ```
 
-Frontend notes:
+The `event` field remains frontend-friendly. `event_type` is the durable machine
+identifier.
 
-- Use this endpoint for an alert investigation timeline component.
-- Missing alerts return `404`.
+## Incident APIs
 
-## GET /dashboard
+### POST /incidents
 
-Returns dashboard metrics.
+Request:
 
-Example:
-
-```text
-GET /dashboard
+```json
+{
+  "title": "Credential attack investigation",
+  "description": "Multiple related alerts require investigation.",
+  "severity": "high",
+  "status": "open",
+  "assignee": "analyst-1"
+}
 ```
 
-Success response: `200 OK`
+Response: `201 Created`
+
+```json
+{
+  "id": 1,
+  "title": "Credential attack investigation",
+  "description": "Multiple related alerts require investigation.",
+  "severity": "high",
+  "status": "open",
+  "assignee": "analyst-1",
+  "created_at": "2026-08-16T10:32:00",
+  "updated_at": "2026-08-16T10:32:00",
+  "closed_at": null,
+  "alerts": []
+}
+```
+
+### GET /incidents
+
+Query parameters:
+
+```text
+status=open
+severity=high
+assignee=analyst-1
+page=1
+limit=10
+```
+
+### GET /incidents/{incident_id}
+
+Returns an incident with linked alerts.
+
+### PATCH /incidents/{incident_id}
+
+Request:
+
+```json
+{
+  "status": "contained",
+  "assignee": "analyst-2"
+}
+```
+
+Status updates to `resolved` or `closed` set `closed_at` when it is not already set.
+
+### DELETE /incidents/{incident_id}
+
+Deletes the incident and clears `incident_id` from linked alerts.
+
+### POST /incidents/{incident_id}/alerts/{alert_id}
+
+Associates an alert with an incident. Missing alert or incident IDs return `404`.
+
+## Dashboard
+
+`GET /dashboard` keeps all previous fields and adds SOC metrics backed by persisted
+data.
+
+Example:
 
 ```json
 {
@@ -390,103 +434,37 @@ Success response: `200 OK`
   "low": 2,
   "automation_completed": 4,
   "high_risk_alerts": 4,
-  "playbooks_executed": 4
+  "playbooks_executed": 5,
+  "open_incidents": 2,
+  "total_incidents": 3,
+  "critical_alerts": 1,
+  "successful_playbooks": 4,
+  "failed_playbooks": 1,
+  "automation_success_rate": 80.0,
+  "average_time_to_contain": null,
+  "average_time_to_resolve": null,
+  "average_time_to_contain_seconds": null,
+  "average_time_to_resolve_seconds": null
 }
 ```
 
-Frontend notes:
+Average time metrics return seconds. They return `null` when there is no persisted
+transition data to calculate from.
 
-- Use this endpoint for dashboard summary cards.
-- `playbooks_executed` is currently derived from high-risk alerts until persistent playbook history is added.
+## Stats And Recent Alerts
 
-## GET /stats
-
-Returns daily, severity, and status statistics.
-
-Example:
+Existing reporting endpoints remain unchanged:
 
 ```text
 GET /stats
-```
-
-Success response: `200 OK`
-
-```json
-{
-  "daily_alerts": [
-    {
-      "date": "2026-07-16",
-      "count": 5
-    }
-  ],
-  "alerts_by_severity": {
-    "critical": 1,
-    "high": 3,
-    "medium": 4,
-    "low": 2
-  },
-  "alerts_by_status": {
-    "new": 4,
-    "investigating": 2,
-    "contained": 1,
-    "resolved": 2,
-    "closed": 1
-  }
-}
-```
-
-Frontend notes:
-
-- Use this endpoint for charts and trend visualizations.
-- `daily_alerts` is suitable for a line chart.
-- Severity and status objects are suitable for pie charts or bar charts.
-
-## GET /recent-alerts
-
-Returns the latest 10 alerts.
-
-Example:
-
-```text
 GET /recent-alerts
 ```
 
-Success response: `200 OK`
+## Validation And Security Notes
 
-```json
-[
-  {
-    "source": "Splunk",
-    "severity": "high",
-    "title": "Brute Force Attack",
-    "description": "Multiple failed login attempts detected",
-    "id": 1,
-    "status": "new",
-    "created_at": "2026-07-16T10:30:00"
-  }
-]
-```
-
-Frontend notes:
-
-- Use this endpoint for "Recent Alerts" widgets.
-- It always returns at most 10 records.
-
-## Frontend Error Handling
-
-Recommended handling:
-
-```text
-200 -> render data
-201 -> show created success state
-404 -> show "Alert not found"
-422 -> show validation errors near form fields
-500 -> show generic backend error message
-```
-
-For local frontend development, CORS already allows:
-
-```text
-http://localhost:5173
-http://127.0.0.1:5173
-```
+- Invalid enums return FastAPI `422` validation errors.
+- Missing alerts/incidents return `404`.
+- API keys are read only from environment variables.
+- API keys are not logged or returned in responses.
+- Built-in playbook actions are explicitly simulated.
+- The API does not execute arbitrary user-provided commands or code.

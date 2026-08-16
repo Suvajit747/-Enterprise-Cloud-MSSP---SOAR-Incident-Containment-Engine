@@ -49,11 +49,17 @@ class PlaybookEngine:
 
     def execute_playbook(self, alert, risk_score):
         action = self.determine_action(alert, risk_score)
+        if action not in self.supported_actions:
+            raise ValueError(f"Unsupported playbook action: {action}")
         status = "skipped" if action == "no_action" else "completed"
         return {
             "alert_id": alert.id,
             "risk_score": risk_score,
             "action": action,
             "status": status,
-            "message": f"Mock playbook action '{action}' executed",
+            "message": (
+                f"SIMULATED playbook action '{action}' executed. "
+                "No real firewall, EDR, cloud, identity, or network containment integration was invoked."
+            ),
+            "simulated": True,
         }
