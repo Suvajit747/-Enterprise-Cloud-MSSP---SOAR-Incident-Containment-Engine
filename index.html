@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SOAR Incident Containment Engine</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<nav class="navbar navbar-dark px-4 py-2" id="mainNav">
+  <div class="d-flex align-items-center gap-3">
+    <svg width="26" height="26" fill="white" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+    </svg>
+    <span class="navbar-brand fw-bold mb-0">SOAR Incident Containment Engine</span>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <label class="text-white-50 mb-0" style="font-size:12px;">Role:</label>
+    <select id="roleSelector" class="form-select form-select-sm" style="width:160px;font-size:12px;">
+      <option value="analyst_token">Analyst</option>
+      <option value="senior_token" selected>Senior Analyst</option>
+      <option value="admin_token">Admin</option>
+    </select>
+    <span id="serverStatus" class="badge bg-secondary" style="font-size:11px;">● Connecting...</span>
+  </div>
+</nav>
+
+<!-- ═══════ STATS BAR (Week 4) ═══════════════════════════════════ -->
+<div id="statsBar" class="stats-bar px-4 py-2 d-flex gap-4 flex-wrap">
+  <div class="stat-item"><span class="stat-num" id="statTotal">0</span><span class="stat-lbl">Total Cases</span></div>
+  <div class="stat-item"><span class="stat-num text-danger" id="statCritical">0</span><span class="stat-lbl">Critical</span></div>
+  <div class="stat-item"><span class="stat-num text-warning" id="statHigh">0</span><span class="stat-lbl">High</span></div>
+  <div class="stat-item"><span class="stat-num text-success" id="statContained">0</span><span class="stat-lbl">Contained</span></div>
+  <div class="stat-item"><span class="stat-num text-info" id="statActions">0</span><span class="stat-lbl">Actions Fired</span></div>
+  <div class="stat-item"><span class="stat-num text-light" id="statMTTR">0s</span><span class="stat-lbl">Avg MTTR</span></div>
+</div>
+
+<!-- ═══════ MAIN CONTENT ══════════════════════════════════════════ -->
+<div class="container-fluid px-4 py-3">
+  <div class="row g-3">
+
+    <!-- ── LEFT PANEL: Alert Ingestion ─────────────────────────── -->
+    <div class="col-lg-4">
+
+      <!-- WEEK 1: Simulate SIEM alert -->
+      <div class="panel mb-3">
+        <div class="panel-header">
+          <span class="panel-title">⚡ Ingest Alert</span>
+          <span class="badge bg-primary" style="font-size:10px;">Week 1 + 2 + 3</span>
+        </div>
+        <div class="panel-body">
+
+          <label class="field-label">Quick Simulate Scenario</label>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn-scenario" data-scenario="brute_force">Brute Force</button>
+            <button class="btn-scenario" data-scenario="malware">Malware</button>
+            <button class="btn-scenario" data-scenario="port_scan">Port Scan</button>
+            <button class="btn-scenario" data-scenario="ddos">DDoS</button>
+            <button class="btn-scenario" data-scenario="data_exfil">Data Exfil</button>
+            <button class="btn-scenario" data-scenario="phishing">Phishing</button>
+          </div>
+
+          <div class="divider-text">— or enter a custom alert —</div>
+
+          <label class="field-label mt-2">Description</label>
+          <textarea id="alertDesc" class="form-control form-control-sm dark-input" rows="3"
+            placeholder="Describe the security alert..."></textarea>
+
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="field-label">Source IP</label>
+              <input id="alertIP" type="text" class="form-control form-control-sm dark-input"
+                placeholder="e.g. 185.220.101.45"/>
+            </div>
+            <div class="col-6">
+              <label class="field-label">Severity</label>
+              <select id="alertSeverity" class="form-select form-select-sm dark-input">
+                <option value="critical">Critical</option>
+                <option value="high" selected>High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="field-label">Host / Endpoint</label>
+              <input id="alertHost" type="text" class="form-control form-control-sm dark-input"
+                placeholder="e.g. web-server-01"/>
+            </div>
+            <div class="col-6">
+              <label class="field-label">SIEM Source</label>
+              <input id="alertSource" type="text" class="form-control form-control-sm dark-input"
+                placeholder="e.g. Splunk"/>
+            </div>
+          </div>
+
+          <button id="ingestBtn" class="btn btn-danger w-100 mt-3 fw-semibold">
+            🚨 Ingest &amp; Run Playbook
+          </button>
+          <div id="ingestLoading" class="text-center mt-2" style="display:none;">
+            <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+            <span class="text-muted ms-2" style="font-size:12px;">Processing alert...</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- WEEK 2: Last enrichment result -->
+      <div class="panel" id="enrichPanel" style="display:none;">
+        <div class="panel-header">
+          <span class="panel-title">🔍 Threat Intelligence</span>
+          <span class="badge bg-warning text-dark" style="font-size:10px;">Week 2</span>
+        </div>
+        <div class="panel-body" id="enrichBody"></div>
+      </div>
+
+    </div><!-- end left col -->
+
+
+    <!-- ── MIDDLE PANEL: Playbook Timeline ──────────────────────── -->
+    <div class="col-lg-4">
+      <div class="panel h-100">
+        <div class="panel-header">
+          <span class="panel-title">🤖 Playbook Execution</span>
+          <span class="badge bg-success" style="font-size:10px;">Week 3</span>
+        </div>
+        <div class="panel-body">
+
+          <!-- Active case info bar -->
+          <div id="activeCaseBar" class="case-info-bar mb-3" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold" id="activeCaseId" style="font-size:13px;"></span>
+              <span id="activeCaseRisk" class="risk-badge"></span>
+            </div>
+            <div class="d-flex gap-2 mt-1 flex-wrap">
+              <span id="activeCaseType" class="type-badge"></span>
+              <span id="activeCaseSev" class="sev-badge"></span>
+              <span id="activeCaseStatus" class="status-badge"></span>
+            </div>
+          </div>
+
+          <!-- Action timeline -->
+          <div id="timelinePlaceholder" class="text-center text-muted py-5" style="font-size:13px;">
+            Ingest an alert to see automated playbook execution here.
+          </div>
+          <div id="timeline" style="display:none;"></div>
+
+          <!-- MTTR display -->
+          <div id="mttrBox" class="mttr-box mt-3" style="display:none;">
+            <span class="mttr-label">⏱ Mean Time to Respond (MTTR):</span>
+            <span class="mttr-value" id="mttrValue"></span>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- end middle col -->
+
+
+    <!-- ── RIGHT PANEL: Case Management (Week 4) ───────────────── -->
+    <div class="col-lg-4">
+      <div class="panel h-100">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+          <span class="panel-title">📋 Case Management</span>
+          <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-info text-dark" style="font-size:10px;">Week 4</span>
+            <button id="refreshCasesBtn" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:2px 8px;">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="panel-body p-0">
+
+          <!-- Filter bar -->
+          <div class="px-3 pt-3 pb-2 d-flex gap-2 flex-wrap">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="open">Open</button>
+            <button class="filter-btn" data-filter="investigating">Investigating</button>
+            <button class="filter-btn" data-filter="contained">Contained</button>
+            <button class="filter-btn" data-filter="closed">Closed</button>
+          </div>
+
+          <div id="casesPlaceholder" class="text-center text-muted py-5 px-3" style="font-size:13px;">
+            No cases yet. Ingest an alert to create a case.
+          </div>
+          <div id="casesList" style="display:none;"></div>
+
+        </div>
+      </div>
+    </div><!-- end right col -->
+
+  </div><!-- end row -->
+</div><!-- end container -->
+
+<!-- ═══════ CASE DETAIL MODAL (Week 4) ═══════════════════════════ -->
+<div class="modal fade" id="caseModal" tabindex="-1" aria-labelledby="caseModalLabel">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content dark-modal">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="caseModalLabel">Case Detail</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="caseModalBody"></div>
+      <div class="modal-footer border-secondary">
+        <select id="statusUpdateSelect" class="form-select form-select-sm dark-input" style="width:160px;">
+          <option value="open">Open</option>
+          <option value="investigating">Investigating</option>
+          <option value="contained">Contained</option>
+          <option value="closed">Closed</option>
+        </select>
+        <button id="updateStatusBtn" class="btn btn-warning btn-sm">Update Status</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ERROR TOAST ═══════════════════════════════════════════ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="errorToast" class="toast align-items-center text-bg-danger border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="errorToastMsg" style="font-size:13px;"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
